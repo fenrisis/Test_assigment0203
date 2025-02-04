@@ -23,7 +23,7 @@ class MessageRepository:
             sender_id=sender_id,
             receiver_id=receiver_id,
             text=text,
-            timestamp=datetime.now(UTC),  # Добавляем timestamp
+            timestamp=datetime.now(UTC),
         )
         self.session.add(message)
         await self.session.commit()

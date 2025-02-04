@@ -12,6 +12,7 @@ class WebSocketMessage(BaseModel):
     content: str
     timestamp: datetime = datetime.now(UTC)
 
+
 class WebSocketResponse(BaseModel):
     """Схема для ответов через WebSocket"""
 

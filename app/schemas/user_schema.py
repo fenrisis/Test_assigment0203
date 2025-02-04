@@ -8,11 +8,14 @@ from pydantic import BaseModel, ConfigDict
 class UserBase(BaseModel):
     username: str
 
+
 class UserCreate(UserBase):
     pass
 
+
 class UserUpdate(BaseModel):
     username: Optional[str] = None
+
 
 class UserInDB(UserBase):
     id: int
@@ -20,6 +23,7 @@ class UserInDB(UserBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class User(UserInDB):
     """Схема для ответа API"""
