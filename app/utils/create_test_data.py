@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -144,7 +145,7 @@ async def create_test_data():
             ws_chat = await create_chat(session, users)
             await create_messages(session, ws_chat, users, is_api_test=False)
             logger.info(f"\nWebSocket test chat created with ID: {ws_chat.id}")
-            logger.info(f"WebSocket test endpoints:")
+            logger.info("WebSocket test endpoints:")
             logger.info(f"ws://localhost:8000/ws/{users[0].id}  # Connect as Alice")
             logger.info(f"ws://localhost:8000/ws/{users[1].id}  # Connect as Bob")
             logger.info(f"Using chat_id: {ws_chat.id}")

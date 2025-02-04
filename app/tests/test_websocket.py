@@ -1,82 +1,97 @@
-import asyncio
 import json
-import logging
 from datetime import UTC, datetime
-
-import websockets
-
-logger = logging.getLogger(__name__)
-
-
-async def client_session(user_id: int, chat_id: int, messages: list[str]):
-    """Simulate a client session"""
-    uri = f"ws://localhost:8000/ws/{user_id}"
-
-    try:
-        async with websockets.connect(uri) as websocket:
-            logger.info(f"User {user_id} connected")
-
-            for msg in messages:
-                # Format and send message
-                message = {
-                    "type": "message",
-                    "chat_id": chat_id,
-                    "content": msg,
-                    "timestamp": datetime.now(UTC).isoformat(),
-                }
-                await websocket.send(json.dumps(message))
-                logger.info(f"User {user_id} sent: {msg}")
-
-                # Get response
-                response = await websocket.recv()
-                logger.info(f"User {user_id} received: {response}")
-
-                # Small delay between messages
-                await asyncio.sleep(1)
-
-            # Wait to see responses to last messages
-            await asyncio.sleep(2)
-
-    except websockets.exceptions.ConnectionClosedError as e:
-        logger.error(f"WebSocket connection closed for user {user_id}: {e!s}")
-        raise
-    except Exception as e:
-        logger.error(f"Error in client session for user {user_id}: {e!s}")
-        raise
+from fastapi import WebSocket
+from sqlalchemy.ext.asyncio import AsyncSession, async_session
+from starlette.websockets import WebSocketDisconnect
 
 
-async def test_chat():
-    """Test message exchange between users"""
-    try:
-        # WebSocket chat should be the second chat (id=2)
-        chat_id = 2  # Hardcoded because we know the order of creation
+from app.schemas.message_schema import MessageCreate
+from app.schemas.websocket_schema import WebSocketMessage
+from app.services.chat_service import ChatService
+from app.services.message_service import MessageService
+from app.services.websocket_service import WebSocketManager
+from app.utils.logger import logger
 
-        # Test messages
-        alice_messages = [
-            "Hi, Bob!",
-            "How are you?",
-            "What's new?",
-        ]
+websocket_manager = WebSocketManager()
 
-        bob_messages = [
-            "Hi, Alice!",
-            "I'm good!",
-            "Working on a project",
-        ]
+async def handle_websocket_message(
+   data: dict,
+   user_id: int,
+   message_service: MessageService,
+   chat_service: ChatService,
+) -> WebSocketMessage:
+   try:
+       message_data = WebSocketMessage(**data)
+       logger.info(f"Processing message from user {user_id}: {data}")
 
-        # Run sessions in parallel
-        await asyncio.gather(
-            client_session(1, chat_id, alice_messages),  # Alice
-            client_session(2, chat_id, bob_messages),  # Bob
-        )
+       chat = await chat_service.get_chat(message_data.chat_id)
+       if user_id not in [p.id for p in chat.participants]:
+           logger.warning(f"User {user_id} attempted to access chat {message_data.chat_id} without permission")
+           raise ValueError("User is not a participant of this chat")
 
-        logger.info("Chat test completed successfully")
+       if message_data.type == "message":
+           receiver_id = next(
+               p.id for p in chat.participants
+               if p.id != user_id
+           )
+           logger.info(f"Creating message: sender={user_id}, receiver={receiver_id}, chat={message_data.chat_id}")
 
-    except Exception as e:
-        logger.error(f"Chat test failed: {e!s}")
-        raise
+           await message_service.create_message(
+               MessageCreate(
+                   chat_id=message_data.chat_id,
+                   text=message_data.content,
+                   receiver_id=receiver_id,
+               ),
+               sender_id=user_id,
+           )
 
+       return message_data
 
-if __name__ == "__main__":
-    logger.info("Starting WebSocket test")
-    asyncio.run(test_chat())
+   except ValueError as e:
+       logger.error(f"Invalid message format from user {user_id}: {e!s}")
+       raise
+
+async def websocket_endpoint(
+   websocket: WebSocket,
+   user_id: int
+):
+   await websocket.accept()
+
+   async with async_session() as session:
+       message_service = MessageService(session)
+       chat_service = ChatService(session)
+
+       try:
+           user_chats = await chat_service.get_user_chats(user_id)
+           await websocket_manager.connect(websocket, user_id)
+
+           for chat in user_chats:
+               websocket_manager.add_user_to_chat(user_id, chat.id)
+
+           while True:
+               data = await websocket.receive_text()
+               message_data = json.loads(data)
+
+               processed_message = await handle_websocket_message(
+                   message_data,
+                   user_id,
+                   message_service,
+                   chat_service,
+               )
+
+               await websocket.send_text(
+                   json.dumps({
+                       "event": "message",
+                       "data": processed_message.model_dump(),
+                       "timestamp": datetime.now(UTC).isoformat()
+                   })
+               )
+
+               await websocket_manager.broadcast_to_chat(
+                   processed_message,
+                   exclude_user_id=user_id,
+               )
+
+       except WebSocketDisconnect:
+           websocket_manager.disconnect(user_id)
+           logger.info(f"User {user_id} disconnected")
