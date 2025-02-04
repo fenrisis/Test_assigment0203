@@ -66,9 +66,9 @@ instance/
 .webassets-cache
 
 #Alembic stuff
-. migrations/
-migrations/
-alembic.ini
+#. migrations/
+#migrations/
+#alembic.ini
 
 # Scrapy stuff:
 .scrapy
