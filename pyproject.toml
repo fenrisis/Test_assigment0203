@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "test-assigment0203"
+version = "0.1.0"
+description = ""
+authors = ["Leonid Zaitsev <antonfenrisis@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.8"
+uvicorn = {extras = ["standard"], version = "^0.34.0"}
+sqlalchemy = "^2.0.37"
+alembic = "^1.14.1"
+pydantic = "^2.10.6"
+asyncpg = "^0.30.0"
+pydantic-settings = "^2.7.1"
+greenlet = "^3.1.1"
+websockets = "^14.2"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.9.4"
+
+[tool.ruff]
+line-length = 88
+select = ["ALL"]
+ignore = [
+    "E501",
+    "ARG002",
+    "RUF003",
+]
+fix = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
