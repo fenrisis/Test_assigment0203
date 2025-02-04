@@ -6,8 +6,10 @@ from datetime import UTC, datetime
 import websockets
 
 logger = logging.getLogger(__name__)
+
+
 async def client_session(user_id: int, chat_id: int, messages: list[str]):
-    """Имитация сессии клиента"""
+    """Simulate a client session"""
     uri = f"ws://localhost:8000/ws/{user_id}"
 
     try:
@@ -15,7 +17,7 @@ async def client_session(user_id: int, chat_id: int, messages: list[str]):
             logger.info(f"User {user_id} connected")
 
             for msg in messages:
-                # Формируем и отправляем сообщение
+                # Format and send message
                 message = {
                     "type": "message",
                     "chat_id": chat_id,
@@ -25,14 +27,14 @@ async def client_session(user_id: int, chat_id: int, messages: list[str]):
                 await websocket.send(json.dumps(message))
                 logger.info(f"User {user_id} sent: {msg}")
 
-                # Получаем ответ
+                # Get response
                 response = await websocket.recv()
                 logger.info(f"User {user_id} received: {response}")
 
-                # Небольшая пауза между сообщениями
+                # Small delay between messages
                 await asyncio.sleep(1)
 
-            # Ждем некоторое время, чтобы увидеть ответы на последние сообщения
+            # Wait to see responses to last messages
             await asyncio.sleep(2)
 
     except websockets.exceptions.ConnectionClosedError as e:
@@ -44,25 +46,28 @@ async def client_session(user_id: int, chat_id: int, messages: list[str]):
 
 
 async def test_chat():
-    """Тестирование обмена сообщениями между пользователями"""
+    """Test message exchange between users"""
     try:
-        # Тестовые сообщения
+        # WebSocket chat should be the second chat (id=2)
+        chat_id = 2  # Hardcoded because we know the order of creation
+
+        # Test messages
         alice_messages = [
-            "Привет, Bob!",
-            "Как дела?",
-            "Что нового?",
+            "Hi, Bob!",
+            "How are you?",
+            "What's new?",
         ]
 
         bob_messages = [
-            "Привет, Alice!",
-            "Все хорошо!",
-            "Работаю над проектом",
+            "Hi, Alice!",
+            "I'm good!",
+            "Working on a project",
         ]
 
-        # Запускаем сессии параллельно
+        # Run sessions in parallel
         await asyncio.gather(
-            client_session(1, 1, alice_messages),  # Alice
-            client_session(2, 1, bob_messages),  # Bob
+            client_session(1, chat_id, alice_messages),  # Alice
+            client_session(2, chat_id, bob_messages),  # Bob
         )
 
         logger.info("Chat test completed successfully")

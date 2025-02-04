@@ -41,13 +41,16 @@ http://127.0.0.1:8000/docs
 #### **Request:**
 ```sh
 curl -X 'GET' \
-  'http://127.0.0.1:8000/api/history/1?limit=50&offset=0' \
+  'http://127.0.0.1:8000/api/history/2?limit=50&offset=0' \
   -H 'accept: application/json'
 ```
 
 #### **Request URL:**
 ```
 http://127.0.0.1:8000/api/history/1?limit=50&offset=0
+chat id 1 -endpoint test 
+chat id 2 -websoket  test
+
 ```
 
 #### **Response Example:**
@@ -55,38 +58,55 @@ http://127.0.0.1:8000/api/history/1?limit=50&offset=0
 {
   "messages": [
     {
-      "text": "Привет, Bob!",
+      "text": "Hi, Bob!",
       "id": 1,
       "chat_id": 1,
       "sender_id": 1,
       "receiver_id": 2,
-      "timestamp": "2025-02-04T08:59:56.457108Z"
+      "timestamp": "2025-02-04T11:06:33.206785Z"
     },
     {
-      "text": "Привет, Alice!",
-      "id": 7,
+      "text": "Hi, Alice!",
+      "id": 2,
       "chat_id": 1,
       "sender_id": 2,
       "receiver_id": 1,
-      "timestamp": "2025-02-04T09:00:24.897580Z"
+      "timestamp": "2025-02-04T11:07:33.206785Z"
     },
     {
-      "text": "Как дела?",
-      "id": 9,
+      "text": "How are you?",
+      "id": 3,
       "chat_id": 1,
       "sender_id": 1,
       "receiver_id": 2,
-      "timestamp": "2025-02-04T09:00:25.935854Z"
+      "timestamp": "2025-02-04T11:08:33.206785Z"
     },
     {
-      "text": "Все хорошо!",
-      "id": 10,
+      "text": "I'm good!",
+      "id": 4,
       "chat_id": 1,
       "sender_id": 2,
       "receiver_id": 1,
-      "timestamp": "2025-02-04T09:00:25.937320Z"
+      "timestamp": "2025-02-04T11:09:33.206785Z"
+    },
+    {
+      "text": "What's new?",
+      "id": 5,
+      "chat_id": 1,
+      "sender_id": 1,
+      "receiver_id": 2,
+      "timestamp": "2025-02-04T11:10:33.206785Z"
+    },
+    {
+      "text": "Working on a project",
+      "id": 6,
+      "chat_id": 1,
+      "sender_id": 2,
+      "receiver_id": 1,
+      "timestamp": "2025-02-04T11:11:33.206785Z"
     }
   ]
 }
+
 ```
 

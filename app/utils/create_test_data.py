@@ -1,16 +1,12 @@
-
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
-
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-
 Base = declarative_base()
-
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
@@ -55,14 +51,13 @@ class Message(Base):
     receiver = relationship("User", foreign_keys=[receiver_id])
 
 
-
 DATABASE_URL = "postgresql+asyncpg://postgres:postgres@db:5432/test_chat0203"
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 async def create_users(session: AsyncSession) -> list[User]:
-    """Создание тестовых пользователей"""
+    """Create test users"""
     users = [
         User(username="alice"),
         User(username="bob"),
@@ -75,7 +70,7 @@ async def create_users(session: AsyncSession) -> list[User]:
 
 
 async def create_chat(session: AsyncSession, users: list[User]) -> Chat:
-    """Создание тестового чата между пользователями"""
+    """Create test chat between users"""
     chat = Chat(participants=users)
     session.add(chat)
     await session.commit()
@@ -83,21 +78,31 @@ async def create_chat(session: AsyncSession, users: list[User]) -> Chat:
     return chat
 
 
-async def create_messages(session: AsyncSession, chat: Chat, users: list[User]) -> list[Message]:
-    """Создание тестовой переписки между пользователями"""
+async def create_messages(session: AsyncSession, chat: Chat, users: list[User], is_api_test: bool = True) -> list[
+    Message]:
+    """Create test conversation between users"""
     base_time = datetime.now(UTC)
 
-    conversation = [
-        # Диалог с интервалом в 1 минуту между сообщениями
-        (users[0], users[1], "Привет, Bob!", timedelta(minutes=0)),
-        (users[1], users[0], "Привет, Alice!", timedelta(minutes=1)),
-        (users[0], users[1], "Как дела?", timedelta(minutes=2)),
-        (users[1], users[0], "Все хорошо!", timedelta(minutes=3)),
-        (users[0], users[1], "Что нового?", timedelta(minutes=4)),
-        (users[1], users[0], "Работаю над проектом", timedelta(minutes=5)),
+    # Different conversations for API and WebSocket testing
+    api_conversation = [
+        (users[0], users[1], "Hello! This is API test chat", timedelta(minutes=0)),
+        (users[1], users[0], "Got it, testing API endpoints", timedelta(minutes=1)),
+        (users[0], users[1], "Testing message history", timedelta(minutes=2)),
+        (users[1], users[0], "Message history works fine", timedelta(minutes=3)),
     ]
 
+    ws_conversation = [
+        (users[0], users[1], "Hi, Bob!", timedelta(minutes=0)),
+        (users[1], users[0], "Hi, Alice!", timedelta(minutes=1)),
+        (users[0], users[1], "How are you?", timedelta(minutes=2)),
+        (users[1], users[0], "I'm good!", timedelta(minutes=3)),
+        (users[0], users[1], "What's new?", timedelta(minutes=4)),
+        (users[1], users[0], "Working on a project", timedelta(minutes=5)),
+    ]
+
+    conversation = api_conversation if is_api_test else ws_conversation
     messages = []
+
     for sender, receiver, text, time_offset in conversation:
         message = Message(
             text=text,
@@ -116,28 +121,33 @@ async def create_messages(session: AsyncSession, chat: Chat, users: list[User]) 
 
 
 async def create_test_data():
-    """Создание тестовых данных для чата"""
+    """Create test data for chat"""
     logger.info("Starting test data creation")
 
     try:
-        # Пересоздаем все таблицы
+        # Recreate all tables
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables recreated")
 
         async with async_session() as session:
-            # Создаем тестовые данные
             users = await create_users(session)
-            chat = await create_chat(session, users)
-            messages = await create_messages(session, chat, users)
 
-            logger.info("\nTest data creation completed successfully")
-            logger.info("WebSocket test endpoints:")
+            # Create API test chat
+            api_chat = await create_chat(session, users)
+            await create_messages(session, api_chat, users, is_api_test=True)
+            logger.info(f"\nAPI test chat created with ID: {api_chat.id}")
+            logger.info(f"Test API endpoint: GET http://localhost:8000/api/history/{api_chat.id}")
+
+            # Create WebSocket test chat
+            ws_chat = await create_chat(session, users)
+            await create_messages(session, ws_chat, users, is_api_test=False)
+            logger.info(f"\nWebSocket test chat created with ID: {ws_chat.id}")
+            logger.info(f"WebSocket test endpoints:")
             logger.info(f"ws://localhost:8000/ws/{users[0].id}  # Connect as Alice")
             logger.info(f"ws://localhost:8000/ws/{users[1].id}  # Connect as Bob")
-            logger.info("\nREST API endpoint:")
-            logger.info(f"GET http://localhost:8000/api/history/{chat.id}")
+            logger.info(f"Using chat_id: {ws_chat.id}")
 
     except Exception as e:
         logger.error(f"Error creating test data: {e!s}")
